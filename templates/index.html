@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Credit Default Prediction</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #172554;
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+        }
+
+        header p {
+            margin: 0;
+            color: #cbd5e1;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: 30px auto;
+            padding: 0 18px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .description {
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-top: 25px;
+        }
+
+        .field label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 7px;
+            font-size: 14px;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 14px;
+        }
+
+        .field input:focus {
+            outline: 2px solid #93c5fd;
+            border-color: #2563eb;
+        }
+
+        button {
+            margin-top: 25px;
+            padding: 13px 25px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .reset {
+            background: #64748b;
+            margin-left: 8px;
+        }
+
+        .result {
+            display: none;
+            margin-top: 25px;
+            padding: 22px;
+            border-radius: 9px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .result h2 {
+            margin-bottom: 10px;
+        }
+
+        .probability {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 12px 0;
+        }
+
+        .error {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #fee2e2;
+            color: #991b1b;
+            border-radius: 7px;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            padding: 25px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 700px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 450px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reset {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Credit Card Default Prediction</h1>
+    <p>Machine Learning Based Credit Risk Assessment</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+
+        <h2>Customer Information</h2>
+
+        <p class="description">
+            Enter all 23 customer details below to predict
+            the possibility of credit card payment default.
+        </p>
+
+        <form id="predictionForm">
+
+            <div class="form-grid" id="inputFields"></div>
+
+            <button type="submit" id="predictButton">
+                Predict Default
+            </button>
+
+            <button type="reset" class="reset">
+                Reset
+            </button>
+
+        </form>
+
+        <div class="error" id="errorBox"></div>
+
+        <div class="result" id="resultBox">
+
+            <h2 id="resultTitle"></h2>
+
+            <p id="resultDescription"></p>
+
+            <div class="probability" id="probability"></div>
+
+            <p id="modelName"></p>
+
+            <small>
+                This is a machine learning estimate, not a
+                guaranteed prediction or lending decision.
+            </small>
+
+        </div>
+
+    </div>
+
+</div>
+
+<footer>
+    Credit Risk Assessment | Machine Learning Project
+</footer>
+
+<script>
+    const features = {{ features | tojson }};
+
+    const inputFields = document.getElementById("inputFields");
+
+    features.forEach(function(feature) {
+
+        const field = document.createElement("div");
+        field.className = "field";
+
+        const label = document.createElement("label");
+        label.htmlFor = feature;
+        label.textContent = feature;
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = feature;
+        input.name = feature;
+        input.step = "any";
+        input.required = true;
+
+        field.appendChild(label);
+        field.appendChild(input);
+
+        inputFields.appendChild(field);
+    });
+
+
+    document.getElementById("predictionForm")
+        .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const button = document.getElementById("predictButton");
+        const errorBox = document.getElementById("errorBox");
+        const resultBox = document.getElementById("resultBox");
+
+        errorBox.style.display = "none";
+        resultBox.style.display = "none";
+
+        const customer = {};
+
+        features.forEach(function(feature) {
+
+            const value = document.getElementById(feature).value;
+
+            customer[feature] = Number(value);
+
+        });
+
+        button.disabled = true;
+        button.textContent = "Predicting...";
+
+        try {
+
+            const response = await fetch("/predict", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(customer)
+
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Prediction failed");
+            }
+
+            document.getElementById("resultTitle").textContent =
+                data.result;
+
+            document.getElementById("resultDescription").textContent =
+                data.prediction === 1
+                ? "The model predicts a possible payment default."
+                : "The model predicts no payment default.";
+
+            document.getElementById("probability").textContent =
+                data.default_probability + "%";
+
+            document.getElementById("modelName").textContent =
+                "Model used: " + data.model;
+
+            resultBox.style.display = "block";
+
+        } catch (error) {
+
+            errorBox.textContent = error.message;
+            errorBox.style.display = "block";
+
+        } finally {
+
+            button.disabled = false;
+            button.textContent = "Predict Default";
+
+        }
+
+    });
+
+
+    document.getElementById("predictionForm")
+        .addEventListener("reset", function() {
+
+        document.getElementById("resultBox").style.display = "none";
+        document.getElementById("errorBox").style.display = "none";
+
+    });
+</script>
+
+</body>
+</html>
